@@ -55,7 +55,6 @@ using ::testing::NotNull;
 enum class RaggedAllToAllImplType {
   kNccl,
   kDecomposer,
-  kOneShot,
   kOneShotWithMultiGpuBarrier,
 };
 
@@ -229,11 +228,8 @@ class RaggedAllToAllTestBase : public CollectiveOpsWithFlagsBase {
     DebugOptions opts = CollectiveOpsWithFlagsBase::GetDebugOptionsForTest();
     opts.set_xla_gpu_unsupported_enable_ragged_all_to_all_decomposer(
         impl_type_ == RaggedAllToAllImplType::kDecomposer);
-    opts.set_xla_gpu_unsupported_use_ragged_all_to_all_one_shot_kernel(
-        impl_type_ == RaggedAllToAllImplType::kOneShot);
     if (impl_type_ == RaggedAllToAllImplType::kOneShotWithMultiGpuBarrier) {
       opts.set_xla_gpu_unsupported_use_ragged_all_to_all_one_shot_kernel(true);
-      opts.set_xla_gpu_experimental_ragged_all_to_all_use_barrier(true);
     }
     return opts;
   }
@@ -897,8 +893,6 @@ std::string RaggedAllToAllImplTypeName(
       return "nccl";
     case RaggedAllToAllImplType::kDecomposer:
       return "decomposer";
-    case RaggedAllToAllImplType::kOneShot:
-      return "one_shot";
     case RaggedAllToAllImplType::kOneShotWithMultiGpuBarrier:
       return "one_shot_with_multi_gpu_barrier";
     default:
@@ -912,7 +906,6 @@ INSTANTIATE_TEST_SUITE_P(
         ::testing::Bool(),
         ::testing::Values(RaggedAllToAllImplType::kNccl,
                           RaggedAllToAllImplType::kDecomposer,
-                          RaggedAllToAllImplType::kOneShot,
                           RaggedAllToAllImplType::kOneShotWithMultiGpuBarrier)),
     [](const ::testing::TestParamInfo<std::tuple<bool, RaggedAllToAllImplType>>&
            info) {
@@ -925,8 +918,9 @@ class RaggedAllToAllMultiHostDecomposerTest
       public ::testing::WithParamInterface<std::tuple<int64_t, int64_t>> {
  public:
   RaggedAllToAllMultiHostDecomposerTest()
-      : RaggedAllToAllTestBase(/*enable_async=*/false,
-                               /*impl_type=*/RaggedAllToAllImplType::kOneShot) {
+      : RaggedAllToAllTestBase(
+            /*enable_async=*/false,
+            /*impl_type=*/RaggedAllToAllImplType::kOneShotWithMultiGpuBarrier) {
   }
 
  protected:
