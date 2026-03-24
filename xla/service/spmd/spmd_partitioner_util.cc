@@ -2221,17 +2221,30 @@ GetReshardAllToAllSourceTargetDims(const HloSharding& source,
 
 bool CanReshardWithCollectivePermute(const HloSharding& source,
                                      const HloSharding& target) {
-  CHECK_EQ(source.UseNamedShardingLeaf(), target.UseNamedShardingLeaf());
-  if (source.UseNamedShardingLeaf()) {
+  if (source.UseNamedShardingLeaf() && target.UseNamedShardingLeaf()) {
     return source.dimensions() == target.dimensions() &&
            source.named_sharding().dim_shardings() !=
                target.named_sharding().dim_shardings();
   }
-  return !source.IsReplicatedOrSingleDevice() &&
-         !target.IsReplicatedOrSingleDevice() &&
-         source.dimensions() == target.dimensions() &&
-         source.ReplicateOnLastTileDim() == target.ReplicateOnLastTileDim() &&
-         source.tile_assignment() != target.tile_assignment();
+
+  std::optional<HloSharding> source_st, target_st;
+  const HloSharding& source_v2 =
+      source.UseNamedShardingLeaf()
+          ? source_st.emplace(
+                HloSharding::V3ToV2Sharding(source.named_sharding()))
+          : source;
+  const HloSharding& target_v2 =
+      target.UseNamedShardingLeaf()
+          ? target_st.emplace(
+                HloSharding::V3ToV2Sharding(target.named_sharding()))
+          : target;
+
+  return !source_v2.IsReplicatedOrSingleDevice() &&
+         !target_v2.IsReplicatedOrSingleDevice() &&
+         source_v2.dimensions() == target_v2.dimensions() &&
+         source_v2.ReplicateOnLastTileDim() ==
+             target_v2.ReplicateOnLastTileDim() &&
+         source_v2.tile_assignment() != target_v2.tile_assignment();
 }
 
 std::optional<GroupedSharding> AlignGroupsWithInternal(
